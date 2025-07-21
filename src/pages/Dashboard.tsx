@@ -1,0 +1,208 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import Table from '../component/Table'; // Adjust path if needed
+
+const API_BASE_URL = 'http://localhost:3000/api'; // Update if backend is hosted elsewhere
+
+const Dashboard: React.FC = () => {
+  const [coldKey, setColdKey] = useState('');
+  const [subnet, setSubnet] = useState(''); // For subnet input
+  const [currentSubnet, setCurrentSubnet] = useState<string | null>(null); // Display current subnet
+  const [registeredKeys, setRegisteredKeys] = useState<string[]>([]);
+  const [minerData, setMinerData] = useState<any[]>([]); // For Table
+  const [alphaTokenPrice, setAlphaTokenPrice] = useState(0.03);
+  const [dailyEarn, setDailyEarn] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null); // For success messages
+
+  // Fetch data function (now reusable)
+  const fetchData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Fetch current subnet
+      const subnetRes = await axios.get(`${API_BASE_URL}/subnet`);
+      setCurrentSubnet(subnetRes.data.subnet || 'Not set'); // Assuming response { subnet: 'value' }
+
+      // Fetch coldkeys
+      const coldkeysRes = await axios.get(`${API_BASE_URL}/coldkeys`);
+      setRegisteredKeys(coldkeysRes.data);
+
+      // Fetch miner data (optionally filtered by current subnet via backend)
+      const minersRes = await axios.get(`${API_BASE_URL}/miners`); // Add ?subnet=${currentSubnet} if backend supports
+      const mappedData = minersRes.data.map((miner: any) => ({
+        coldkey: miner.coldkey,
+        hotkey: miner.hotkey,
+        UID: miner.uid,
+        Ranking: miner.ranking,
+        Staking: (miner.staking ? Number(miner.staking).toFixed(2) : '0.00'),
+        DailyAlpha: (miner.dailyAlpha ? Number(miner.dailyAlpha).toFixed(2) : '0.00'),
+        Immune: miner.immune ? 'Yes' : 'No',
+        Registered: miner.deregistered ? 'No' : 'Yes',
+        'In Danger': miner.inDanger ? 'Yes' : 'No',
+        Deregistered: miner.deregisteredAt ? new Date(miner.deregisteredAt).toLocaleDateString() : 'No',
+      }));
+      setMinerData(mappedData);
+
+      // Dynamic Daily Earn
+      const totalDailyAlpha = mappedData.reduce((sum, item) => sum + parseFloat(item.DailyAlpha), 0);
+      setDailyEarn(totalDailyAlpha * alphaTokenPrice);
+
+    } catch (err) {
+      setError('Failed to fetch data. Please try again.');
+      console.error(err);
+    }
+    setLoading(false);
+  };
+
+  // Fetch on mount and periodically
+  useEffect(() => {
+    fetchData(); // Initial fetch
+    const interval = setInterval(fetchData, 60000); // Poll every minute
+
+    // Notification polling (unchanged)
+    const checkNotifications = async () => {
+      try {
+        const res = await axios.get(`${API_BASE_URL}/notifications`);
+        res.data.messages.forEach((msg: string) => {
+          if (Notification.permission === 'granted') {
+            new Notification('Miner Deregistration Alert', { body: msg });
+          } else if (Notification.permission !== 'denied') {
+            Notification.requestPermission().then(permission => {
+              if (permission === 'granted') new Notification('Miner Deregistration Alert', { body: msg });
+            });
+          }
+        });
+      } catch (err) {
+        console.error('Notification check failed:', err);
+      }
+    };
+    const notifInterval = setInterval(checkNotifications, 60000);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(notifInterval);
+    };
+  }, [alphaTokenPrice]);
+
+  const handleRegister = async () => {
+    if (coldKey && !registeredKeys.includes(coldKey)) {
+      try {
+        await axios.post(`${API_BASE_URL}/coldkeys`, { coldkey: coldKey });
+        setRegisteredKeys([...registeredKeys, coldKey]);
+        setColdKey('');
+      } catch (err) {
+        setError('Failed to register coldkey.');
+        console.error(err);
+      }
+    }
+  };
+
+  const handleDelete = async (keyToDelete: string) => {
+    try {
+      await axios.delete(`${API_BASE_URL}/coldkeys/${keyToDelete}`);
+      setRegisteredKeys(registeredKeys.filter(key => key !== keyToDelete));
+    } catch (err) {
+      setError('Failed to delete coldkey.');
+      console.error(err);
+    }
+  };
+
+  const handleSubnetChange = async () => {
+    if (!subnet.trim()) {
+      setError('Please enter a valid subnet.');
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      await axios.post(`${API_BASE_URL}/subnet`, { subnet });
+      setSuccess(`Subnet updated to "${subnet}" successfully!`);
+      setSubnet(''); // Clear input
+      await fetchData(); // Refetch data to reflect changes (e.g., updated miners)
+    } catch (err) {
+      setError('Failed to update subnet. Please check the value and try again.');
+      console.error(err);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="w-full p-4">
+      {loading && <p>Loading data...</p>}
+      {error && <p className="text-red-500">{error}</p>}
+      {success && <p className="text-green-700">{success}</p>}
+      <div className="w-full flex flex-row">
+        <div className="w-full flex flex-col items-start">
+          <div className="flex flex-col items-center justify-center ubuntu-italic text-black pr-4 md:pr-8 ">
+            <div className="text-4xl py-4 font-bold text-red-500 italic">Current Subnet: {currentSubnet || 'Loading...'}</div> {/* Display current */}
+            <div className="mb-4 flex flex-row justify-center items-center gap-2 text-lg md:text-xl leading-tight">
+              <div>Subnet : </div>
+              <input
+                type="text"
+                value={subnet}
+                onChange={e => setSubnet(e.target.value)}
+                placeholder="Enter subnet"
+                className="border px-2 py-1 rounded"
+              />
+              <button
+                onClick={handleSubnetChange}
+                className="bg-blue-500 text-white px-3 py-1 rounded"
+                disabled={loading} // Disable during loading
+              >
+                Enter
+              </button>
+            </div>
+          </div>
+          {/* Rest of the UI (coldkeys, etc.) unchanged */}
+          <div className="w-full max-w-xl mb-4 flex gap-2">
+            <input
+              type="text"
+              value={coldKey}
+              onChange={e => setColdKey(e.target.value)}
+              placeholder="Enter coldkey"
+              className="w-full border px-2 py-1 rounded"
+            />
+            <button
+              onClick={handleRegister}
+              className="bg-blue-500 text-white px-3 py-1 rounded"
+            >
+              Register
+            </button>
+          </div>
+          <div className="w-full max-w-xl mb-4">
+            <h2 className="font-bold mb-2">My Coldkeys</h2>
+            <ul>
+              {registeredKeys.map(key => (
+                <li key={key} className="flex items-center justify-between mb-1">
+                  <span>{key}</span>
+                  <button
+                    onClick={() => handleDelete(key)}
+                    className="bg-red-500 text-white px-2 py-1 rounded"
+                  >
+                    Delete
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+        <div className="w-full flex flex-row gap-4">
+          <div className="w-full">
+            <h2 className="font-bold mb-2">Alpha Token Price</h2>
+            <div className="text-sm">{alphaTokenPrice.toFixed(2)}$</div>
+          </div>
+          <div className="w-full">
+            <h2 className="font-bold mb-2">Daily Earn</h2>
+            <div className="text-sm">{dailyEarn.toFixed(2)}$</div>
+          </div>
+        </div>
+      </div>
+      <Table rowData={minerData} />
+    </div>
+  );
+};
+
+export default Dashboard;
