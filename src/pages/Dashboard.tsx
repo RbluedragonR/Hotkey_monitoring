@@ -17,11 +17,15 @@ const Dashboard: React.FC = () => {
   const [immunePeriod, setImmunePeriod] = useState<number>(0);
   const [dailyEarn, setDailyEarn] = useState(0);
   const [totalDailyAlpha, setTotalDailyAlpha] = useState(0); // For total daily alpha calculation
+  const [totalStakingAlpha, setTotalStakingAlpha] = useState(0); // Total staking alpha
+  const [totalStakingPrice, setTotalStakingPrice] = useState(0); // Total staking price
+  const [totalMinerNum, setTotalMinerNum] = useState(0);
+  const [registeredMinerNum, setRegisteredMinerNum] = useState(0);
+  const [deregisteredMinerNum, setDeregisteredMinerNum] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null); // For success messages
-  const [totalStakingAlpha, setTotalStakingAlpha] = useState(0); // Total staking alpha
-  const [totalStakingPrice, setTotalStakingPrice] = useState(0); // Total staking price
+
   // Fetch data function (now reusable)
   const fetchData = async () => {
     setLoading(true);
@@ -59,17 +63,26 @@ const Dashboard: React.FC = () => {
       }));
       setMinerData(mappedData);
 
-      // Dynamic Daily Earn (using alphaTokenPrice)
-      setTotalDailyAlpha(mappedData.reduce((sum, item) => sum + parseFloat(item.DailyAlpha), 0));
-      setDailyEarn(totalDailyAlpha * alphaTokenPrice);
-      setTotalStakingAlpha(mappedData.reduce((sum, item) => sum + parseFloat(item.Staking), 0));
-      setTotalStakingPrice(totalStakingAlpha * alphaTokenPrice);
+      // Calculate totals from mappedData
+      const totalDaily = mappedData.reduce((sum, item) => sum + parseFloat(item.DailyAlpha || '0'), 0);
+      const totalStaking = mappedData.reduce((sum, item) => sum + parseFloat(item.Staking || '0'), 0);
+      setTotalDailyAlpha(totalDaily);
+      setTotalStakingAlpha(totalStaking);
+      setTotalMinerNum(mappedData.length);
+      setRegisteredMinerNum(mappedData.filter((m) => m.Registered === 'Yes').length);
+      setDeregisteredMinerNum(mappedData.filter((m) => m.Registered === 'No').length);
     } catch (err) {
       setError('Failed to fetch data. Please try again.');
       console.error(err);
     }
     setLoading(false);
   };
+
+  // Reactive calculations for dailyEarn and totalStakingPrice
+  useEffect(() => {
+    setDailyEarn(totalDailyAlpha * alphaTokenPrice);
+    setTotalStakingPrice(totalStakingAlpha * alphaTokenPrice);
+  }, [totalDailyAlpha, totalStakingAlpha, alphaTokenPrice]);
 
   // Fetch on mount and periodically
   useEffect(() => {
@@ -99,7 +112,7 @@ const Dashboard: React.FC = () => {
       clearInterval(interval);
       clearInterval(notifInterval);
     };
-  }, [alphaTokenPrice]); // Re-run if alphaTokenPrice changes
+  }, []); // No dependencies; runs on mount
 
   const handleRegister = async () => {
     if (coldKey && !registeredKeys.includes(coldKey)) {
@@ -205,7 +218,7 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
         <div className="w-full flex flex-col justify-around items-center gap-4 text-xl">
-          <div className='w-full flex flex-row justify-center items-center '>
+          <div className='w-full flex flex-row justify-center items-center border-b-2 border-gray-400 pb-4 '>
             <div className="flex flex-col justify-center text-center items-center">
               <h2 className="font-bold mb-2">Alpha Token Price</h2>
               <input
@@ -244,8 +257,22 @@ const Dashboard: React.FC = () => {
                 </div>
               </div>
             </div>
-
-
+          </div>
+          <div className='w-full flex flex-row justify-center items-center gap-2'>
+            <div className="w-full flex flex-col items-center">
+              <h2 className="font-bold mb-2">Total Miners</h2>
+              <div className="text-lg">{totalMinerNum}</div>
+            </div>
+            <div className="w-full flex flex-col items-center">
+              <h2 className="font-bold mb-2">Registered Miner</h2>
+              <div className="text-lg">{registeredMinerNum}</div>
+            </div>
+            <div className="w-full flex flex-col items-center">
+              <h2 className="font-bold mb-2">Deregistered Miner</h2>
+              <div className="text-lg">
+                {deregisteredMinerNum}
+              </div>          
+          </div>
           </div>
           <div className='w-full flex flex-row justify-center items-center gap-2'>
             <div className="w-full flex flex-col items-center">
@@ -259,7 +286,8 @@ const Dashboard: React.FC = () => {
             <div className="w-full flex flex-col items-center">
               <h2 className="font-bold mb-2">Immune Period</h2>
               <div className="text-lg">
-                {immunePeriod} ({Math.floor(immunePeriod / 300)}h, {Math.floor((immunePeriod % 300) / 5)}m)              </div>
+                {immunePeriod} ({Math.floor(immunePeriod / 300)}h, {Math.floor((immunePeriod % 300) / 5)}m)
+              </div>
             </div>
 
             {/* <div className="w-full"> 
