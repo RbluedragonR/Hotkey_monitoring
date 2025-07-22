@@ -10,12 +10,18 @@ const Dashboard: React.FC = () => {
   const [currentSubnet, setCurrentSubnet] = useState<string | null>(null); // Display current subnet
   const [registeredKeys, setRegisteredKeys] = useState<string[]>([]);
   const [minerData, setMinerData] = useState<any[]>([]); // For Table
-  const [alphaTokenPrice, setAlphaTokenPrice] = useState(0.03);
+  const [alphaTokenPrice, setAlphaTokenPrice] = useState(0.03); // Editable market price for Daily Earn
+  const [subnetAlphaPrice, setSubnetAlphaPrice] = useState<number>(0); // From backend settings (e.g., emission)
+  const [regCost, setRegCost] = useState<number>(0);
+  const [regAllowed, setRegAllowed] = useState<boolean>(true);
+  const [immunePeriod, setImmunePeriod] = useState<number>(0);
   const [dailyEarn, setDailyEarn] = useState(0);
+  const [totalDailyAlpha, setTotalDailyAlpha] = useState(0); // For total daily alpha calculation
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null); // For success messages
-
+  const [totalStakingAlpha, setTotalStakingAlpha] = useState(0); // Total staking alpha
+  const [totalStakingPrice, setTotalStakingPrice] = useState(0); // Total staking price
   // Fetch data function (now reusable)
   const fetchData = async () => {
     setLoading(true);
@@ -23,7 +29,15 @@ const Dashboard: React.FC = () => {
     try {
       // Fetch current subnet
       const subnetRes = await axios.get(`${API_BASE_URL}/subnet`);
-      setCurrentSubnet(subnetRes.data.subnet || 'Not set'); // Assuming response { subnet: 'value' }
+      setCurrentSubnet(subnetRes.data.subnet?.toString() || 'Not set');
+
+      // Fetch subnet settings (new: alphaPrice, regCost, etc.)
+      const settingsRes = await axios.get(`${API_BASE_URL}/settings`);
+      const settings = settingsRes.data;
+      setSubnetAlphaPrice(settings.alphaPrice || 0);
+      setRegCost(settings.regCost || 0);
+      setRegAllowed(settings.reg_allowed ?? true);
+      setImmunePeriod(settings.immunePeriod || 0);
 
       // Fetch coldkeys
       const coldkeysRes = await axios.get(`${API_BASE_URL}/coldkeys`);
@@ -45,10 +59,11 @@ const Dashboard: React.FC = () => {
       }));
       setMinerData(mappedData);
 
-      // Dynamic Daily Earn
-      const totalDailyAlpha = mappedData.reduce((sum, item) => sum + parseFloat(item.DailyAlpha), 0);
+      // Dynamic Daily Earn (using alphaTokenPrice)
+      setTotalDailyAlpha(mappedData.reduce((sum, item) => sum + parseFloat(item.DailyAlpha), 0));
       setDailyEarn(totalDailyAlpha * alphaTokenPrice);
-
+      setTotalStakingAlpha(mappedData.reduce((sum, item) => sum + parseFloat(item.Staking), 0));
+      setTotalStakingPrice(totalStakingAlpha * alphaTokenPrice);
     } catch (err) {
       setError('Failed to fetch data. Please try again.');
       console.error(err);
@@ -84,7 +99,7 @@ const Dashboard: React.FC = () => {
       clearInterval(interval);
       clearInterval(notifInterval);
     };
-  }, [alphaTokenPrice]);
+  }, [alphaTokenPrice]); // Re-run if alphaTokenPrice changes
 
   const handleRegister = async () => {
     if (coldKey && !registeredKeys.includes(coldKey)) {
@@ -121,7 +136,7 @@ const Dashboard: React.FC = () => {
       await axios.post(`${API_BASE_URL}/subnet`, { subnet });
       setSuccess(`Subnet updated to "${subnet}" successfully!`);
       setSubnet(''); // Clear input
-      await fetchData(); // Refetch data to reflect changes (e.g., updated miners)
+      await fetchData(); // Refetch data to reflect changes (e.g., updated miners and settings)
     } catch (err) {
       setError('Failed to update subnet. Please check the value and try again.');
       console.error(err);
@@ -134,7 +149,7 @@ const Dashboard: React.FC = () => {
       {loading && <p>Loading data...</p>}
       {error && <p className="text-red-500">{error}</p>}
       {success && <p className="text-green-700">{success}</p>}
-      <div className="w-full flex flex-row">
+      <div className="w-full max-w-7xl flex flex-row justify-between items-center mx-auto">
         <div className="w-full flex flex-col items-start">
           <div className="flex flex-col items-center justify-center ubuntu-italic text-black pr-4 md:pr-8 ">
             <div className="text-4xl py-4 font-bold text-red-500 italic">Current Subnet: {currentSubnet || 'Loading...'}</div> {/* Display current */}
@@ -189,14 +204,68 @@ const Dashboard: React.FC = () => {
             </ul>
           </div>
         </div>
-        <div className="w-full flex flex-row gap-4">
-          <div className="w-full">
-            <h2 className="font-bold mb-2">Alpha Token Price</h2>
-            <div className="text-sm">{alphaTokenPrice.toFixed(2)}$</div>
+        <div className="w-full flex flex-col justify-around items-center gap-4 text-xl">
+          <div className='w-full flex flex-row justify-center items-center '>
+            <div className="flex flex-col justify-center text-center items-center">
+              <h2 className="font-bold mb-2">Alpha Token Price</h2>
+              <input
+                type="number"
+                value={alphaTokenPrice}
+                onChange={e => setAlphaTokenPrice(parseFloat(e.target.value) || 0)}
+                className="border px-2 py-1 rounded w-36"
+                step="0.001"
+              />
+              
+              {/* <div className="text-sm">${alphaTokenPrice.toFixed(2)}</div> */}
+            </div>
+
+            <div className='w-full flex flex-col justify-center items-center gap-4'>
+              <div className="w-full flex flex-row items-center">
+                <div className="w-full flex flex-col items-center">
+                  <h2 className="font-bold mb-2">Daily Total Alpha</h2>
+                  <div className="text-lg">{totalDailyAlpha.toFixed(2)}</div>
+                </div>
+                <div className="w-full flex flex-col items-center">
+                  <h2 className="font-bold mb-2">Daily Earn</h2>
+                  <div className="text-lg">${dailyEarn.toFixed(2)}</div>
+                </div>
+              </div>
+
+              <div className="w-full flex flex-row items-center">
+                <div className="w-full flex flex-col items-center">
+                  <h2 className="font-bold mb-2">Total Staking Alpha</h2>
+                  <div className="text-lg">
+                    {totalStakingAlpha.toFixed(2)}
+                  </div>
+                </div>
+                <div className="w-full flex flex-col items-center">
+                  <h2 className="font-bold mb-2">Total Staking Price</h2>
+                  <div className="text-lg">${totalStakingPrice.toFixed(2)}</div>
+                </div>
+              </div>
+            </div>
+
+
           </div>
-          <div className="w-full">
-            <h2 className="font-bold mb-2">Daily Earn</h2>
-            <div className="text-sm">{dailyEarn.toFixed(2)}$</div>
+          <div className='w-full flex flex-row justify-center items-center gap-2'>
+            <div className="w-full flex flex-col items-center">
+              <h2 className="font-bold mb-2">Reg Cost</h2>
+              <div className="text-lg">{regCost.toFixed(2)}t</div>
+            </div>
+            <div className="w-full flex flex-col items-center">
+              <h2 className="font-bold mb-2">Reg Allowed</h2>
+              <div className="text-lg">{regAllowed ? 'Yes' : 'No'}</div>
+            </div>
+            <div className="w-full flex flex-col items-center">
+              <h2 className="font-bold mb-2">Immune Period</h2>
+              <div className="text-lg">
+                {immunePeriod} ({Math.floor(immunePeriod / 300)}h, {Math.floor((immunePeriod % 300) / 5)}m)              </div>
+            </div>
+
+            {/* <div className="w-full"> 
+              <h2 className="font-bold mb-2">Subnet Alpha Price (Emission)</h2>
+              <div className="text-lg">{subnetAlphaPrice.toFixed(2)}</div>
+            </div> */}
           </div>
         </div>
       </div>
