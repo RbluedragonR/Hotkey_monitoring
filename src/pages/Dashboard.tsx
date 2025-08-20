@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Table from '../component/Table'; // Adjust path if needed
 
-const API_BASE_URL = 'http://localhost:3000/api'; // Update if backend is hosted elsewhere
+const API_BASE_URL = 'https://hotkey-monitoring-backend.onrender.com/api'; // Update if backend is hosted elsewhere
 
 const Dashboard: React.FC = () => {
   const [coldKey, setColdKey] = useState('');
@@ -177,7 +177,7 @@ const Dashboard: React.FC = () => {
               />
               <button
                 onClick={handleSubnetChange}
-                className="bg-blue-500 text-white px-3 py-1 rounded"
+                className="bg-blue-500 text-white px-3 py-1 rounded hover:cursor-pointer hover:bg-red-400"
                 disabled={loading} // Disable during loading
               >
                 Enter
@@ -195,7 +195,7 @@ const Dashboard: React.FC = () => {
             />
             <button
               onClick={handleRegister}
-              className="bg-blue-500 text-white px-3 py-1 rounded"
+              className="bg-blue-500 text-white px-3 py-1 rounded hover:cursor-pointer hover:bg-red-400"
             >
               Register
             </button>
@@ -208,7 +208,7 @@ const Dashboard: React.FC = () => {
                   <span>{key}</span>
                   <button
                     onClick={() => handleDelete(key)}
-                    className="bg-red-500 text-white px-2 py-1 rounded"
+                    className="bg-red-500 text-white px-2 py-1 rounded hover:cursor-pointer hover:bg-red-300"
                   >
                     Delete
                   </button>
