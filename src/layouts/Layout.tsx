@@ -1,6 +1,6 @@
-import { useEffect, ReactNode } from "react";
+import { useEffect } from "react";
+import type { ReactNode } from "react"; // ✅ type-only import
 import Navbar from "./Navbar";
-
 interface LayoutProps {
     children: ReactNode;
 }

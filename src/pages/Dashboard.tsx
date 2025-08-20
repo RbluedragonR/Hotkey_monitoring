@@ -11,7 +11,7 @@ const Dashboard: React.FC = () => {
   const [registeredKeys, setRegisteredKeys] = useState<string[]>([]);
   const [minerData, setMinerData] = useState<any[]>([]); // For Table
   const [alphaTokenPrice, setAlphaTokenPrice] = useState(0.03); // Editable market price for Daily Earn
-  const [subnetAlphaPrice, setSubnetAlphaPrice] = useState<number>(0); // From backend settings (e.g., emission)
+  // const [subnetAlphaPrice, setSubnetAlphaPrice] = useState<number>(0); // From backend settings (e.g., emission)
   const [regCost, setRegCost] = useState<number>(0);
   const [regAllowed, setRegAllowed] = useState<boolean>(true);
   const [immunePeriod, setImmunePeriod] = useState<number>(0);
@@ -38,7 +38,7 @@ const Dashboard: React.FC = () => {
       // Fetch subnet settings (new: alphaPrice, regCost, etc.)
       const settingsRes = await axios.get(`${API_BASE_URL}/settings`);
       const settings = settingsRes.data;
-      setSubnetAlphaPrice(settings.alphaPrice || 0);
+      // setSubnetAlphaPrice(settings.alphaPrice || 0);
       setRegCost(settings.regCost || 0);
       setRegAllowed(settings.reg_allowed ?? true);
       setImmunePeriod(settings.immunePeriod || 0);
@@ -64,13 +64,22 @@ const Dashboard: React.FC = () => {
       setMinerData(mappedData);
 
       // Calculate totals from mappedData
-      const totalDaily = mappedData.reduce((sum, item) => sum + parseFloat(item.DailyAlpha || '0'), 0);
-      const totalStaking = mappedData.reduce((sum, item) => sum + parseFloat(item.Staking || '0'), 0);
+      const totalDaily = mappedData.reduce(
+        (sum: number, item: { DailyAlpha: string }) => sum + parseFloat(item.DailyAlpha || '0'),
+        0
+      );
+
+      const totalStaking = mappedData.reduce(
+        (sum: number, item: { Staking: string }) => sum + parseFloat(item.Staking || '0'),
+        0
+      );
+
       setTotalDailyAlpha(totalDaily);
       setTotalStakingAlpha(totalStaking);
       setTotalMinerNum(mappedData.length);
-      setRegisteredMinerNum(mappedData.filter((m) => m.Registered === 'Yes').length);
-      setDeregisteredMinerNum(mappedData.filter((m) => m.Registered === 'No').length);
+      setRegisteredMinerNum(mappedData.filter((m: { Registered: string }) => m.Registered === 'Yes').length);
+      setDeregisteredMinerNum(mappedData.filter((m: { Registered: string }) => m.Registered === 'No').length);
+
     } catch (err) {
       setError('Failed to fetch data. Please try again.');
       console.error(err);
@@ -228,7 +237,7 @@ const Dashboard: React.FC = () => {
                 className="border px-2 py-1 rounded w-36"
                 step="0.001"
               />
-              
+
               {/* <div className="text-sm">${alphaTokenPrice.toFixed(2)}</div> */}
             </div>
 
@@ -271,8 +280,8 @@ const Dashboard: React.FC = () => {
               <h2 className="font-bold mb-2">Deregistered Miner</h2>
               <div className="text-lg">
                 {deregisteredMinerNum}
-              </div>          
-          </div>
+              </div>
+            </div>
           </div>
           <div className='w-full flex flex-row justify-center items-center gap-2'>
             <div className="w-full flex flex-col items-center">
