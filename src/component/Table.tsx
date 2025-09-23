@@ -32,11 +32,19 @@ const Table: React.FC<TableProps> = ({ rowData }) => {
   const saveSymbolNote = React.useCallback((symbol: string, note: string) => {
     setSymbolNotes((prev) => {
       const next = { ...prev, [symbol]: note };
+      // Update ref immediately so valueGetter sees the latest value
+      symbolNotesRef.current = next;
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       } catch {}
       return next;
     });
+  }, []);
+
+  const getRowSymbolKey = React.useCallback((data: any): string | undefined => {
+    if (!data) return undefined;
+    const key = data.symbol ?? data.Symbol ?? data.UID ?? data.hotkey;
+    return key !== undefined && key !== null ? String(key) : undefined;
   }, []);
 
   const copyToClipboard = async (text: string) => {
@@ -102,12 +110,12 @@ const Table: React.FC<TableProps> = ({ rowData }) => {
       editable: true,
       minWidth: 200,
       valueGetter: (params: any) => {
-        const sym = params.data?.symbol;
+        const sym = getRowSymbolKey(params.data);
         if (!sym) return "";
         return symbolNotesRef.current[sym] ?? "";
       },
       valueSetter: (params: any) => {
-        const sym = params.data?.symbol;
+        const sym = getRowSymbolKey(params.data);
         if (!sym) return false;
         const newVal = params.newValue ?? "";
         saveSymbolNote(sym, newVal);
