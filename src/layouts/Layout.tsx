@@ -6,14 +6,6 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-    useEffect(() => {
-        const hasReloaded = sessionStorage.getItem("hasReloaded");
-
-        if (!hasReloaded) {
-            sessionStorage.setItem("hasReloaded", "true");
-            window.location.reload();
-        }
-    }, []);
     return (
         <div className="w-full flex flex-col items-center rounded-sm">
             <Navbar />
