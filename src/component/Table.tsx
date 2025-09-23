@@ -108,7 +108,7 @@ const Table: React.FC<TableProps> = ({ rowData }) => {
       headerName: "Symbol Notes",
       colId: "symbolNotes",
       editable: true,
-      minWidth: 200,
+      minWidth: 90,
       valueGetter: (params: any) => {
         const sym = getRowSymbolKey(params.data);
         if (!sym) return "";
@@ -127,8 +127,8 @@ const Table: React.FC<TableProps> = ({ rowData }) => {
     },
     { field: "UID", maxWidth: 90 },
     { field: "Ranking", maxWidth: 90 },
-    { field: "Staking", maxWidth: 90 },
-    { field: "DailyAlpha", maxWidth: 90 },
+    { field: "Staking", maxWidth: 150 },
+    { field: "DailyAlpha", maxWidth: 150 },
     { field: "Immune", maxWidth: 90 },
     { field: "Registered", maxWidth: 100 },
     { field: "In Danger", maxWidth: 100 },

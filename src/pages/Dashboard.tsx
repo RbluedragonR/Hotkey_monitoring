@@ -53,18 +53,25 @@ const Dashboard: React.FC = () => {
 
       // Fetch miner data (optionally filtered by current subnet via backend)
       const minersRes = await axios.get(`${API_BASE_URL}/miners`); // Add ?subnet=${currentSubnet} if backend supports
-      const mappedData = minersRes.data.map((miner: any) => ({
-        coldkey: miner.coldkey,
-        hotkey: miner.hotkey,
-        UID: miner.uid,
-        Ranking: miner.ranking,
-        Staking: (miner.staking ? Number(miner.staking).toFixed(2) : '0.00'),
-        DailyAlpha: (miner.dailyAlpha ? Number(miner.dailyAlpha).toFixed(2) : '0.00'),
-        Immune: miner.immune ? 'Yes' : 'No',
-        Registered: miner.deregistered ? 'No' : 'Yes',
-        'In Danger': miner.inDanger ? 'Yes' : 'No',
-        Deregistered: miner.deregisteredAt ? new Date(miner.deregisteredAt).toLocaleDateString() : 'No',
-      }));
+      const mappedData = minersRes.data.map((miner: any) => {
+        const stakingAlpha = miner.staking ? Number(miner.staking) : 0;
+        const dailyAlphaAlpha = miner.dailyAlpha ? Number(miner.dailyAlpha) : 0;
+        const usdPerAlpha = subnetAlphaPrice * currentTaoPrice;
+        const stakingUsd = Math.round(stakingAlpha * usdPerAlpha);
+        const dailyAlphaUsd = Math.round(dailyAlphaAlpha * usdPerAlpha);
+        return {
+          coldkey: miner.coldkey,
+          hotkey: miner.hotkey,
+          UID: miner.uid,
+          Ranking: miner.ranking,
+          Staking: `${stakingAlpha.toFixed(2)} ($${stakingUsd})`,
+          DailyAlpha: `${dailyAlphaAlpha.toFixed(2)} ($${dailyAlphaUsd})`,
+          Immune: miner.immune ? 'Yes' : 'No',
+          Registered: miner.deregistered ? 'No' : 'Yes',
+          'In Danger': miner.inDanger ? 'Yes' : 'No',
+          Deregistered: miner.deregisteredAt ? new Date(miner.deregisteredAt).toLocaleDateString() : 'No',
+        };
+      });
       setMinerData(mappedData);
 
       // Calculate totals from mappedData
@@ -198,6 +205,9 @@ const Dashboard: React.FC = () => {
     };
 
     fetchPrice();
+    // After price data loads later, re-fetch miners to format with current USD conversion
+    const refreshAfterPrice = setTimeout(fetchData, 1000);
+    return () => clearTimeout(refreshAfterPrice);
   }, []); // No dependencies needed since backend handles the current subnet
 
 
