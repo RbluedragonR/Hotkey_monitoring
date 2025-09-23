@@ -52,38 +52,38 @@ const Dashboard: React.FC = () => {
       const coldkeysRes = await axios.get(`${API_BASE_URL}/coldkeys`);
       setRegisteredKeys(coldkeysRes.data);
 
-      // Fetch miner data
+      // Fetch miner data - store raw alpha values for later USD calculation
       const minersRes = await axios.get(`${API_BASE_URL}/miners`);
       const mappedData = minersRes.data.map((miner: any) => {
         const stakingAlpha = miner.staking ? Number(miner.staking) : 0;
         const dailyAlphaAlpha = miner.dailyAlpha ? Number(miner.dailyAlpha) : 0;
-        const usdPerAlpha = subnetAlphaPrice * currentTaoPrice;
-        const stakingUsd = Math.round(stakingAlpha * usdPerAlpha);
-        const dailyAlphaUsd = Math.round(dailyAlphaAlpha * usdPerAlpha);
         
         return {
           coldkey: miner.coldkey,
           hotkey: miner.hotkey,
           UID: miner.uid,
           Ranking: miner.ranking,
-          Staking: `${stakingAlpha.toFixed(2)} ($${stakingUsd})`,
-          DailyAlpha: `${dailyAlphaAlpha.toFixed(2)} ($${dailyAlphaUsd})`,
+          Staking: `${stakingAlpha.toFixed(2)} ($$0)`, // Will be updated when prices load
+          DailyAlpha: `${dailyAlphaAlpha.toFixed(2)} ($$0)`, // Will be updated when prices load
           Immune: miner.immune ? 'Yes' : 'No',
           Registered: miner.deregistered ? 'No' : 'Yes',
           'In Danger': miner.inDanger ? 'Yes' : 'No',
           Deregistered: miner.deregisteredAt ? new Date(miner.deregisteredAt).toLocaleDateString() : 'No',
+          // Store raw values for calculations
+          _stakingAlpha: stakingAlpha,
+          _dailyAlphaAlpha: dailyAlphaAlpha,
         };
       });
       setMinerData(mappedData);
 
-      // Calculate totals from mappedData
+      // Calculate totals from raw alpha values
       const totalDaily = mappedData.reduce(
-        (sum: number, item: { DailyAlpha: string }) => sum + parseFloat(item.DailyAlpha || '0'),
+        (sum: number, item: any) => sum + item._dailyAlphaAlpha,
         0
       );
 
       const totalStaking = mappedData.reduce(
-        (sum: number, item: { Staking: string }) => sum + parseFloat(item.Staking || '0'),
+        (sum: number, item: any) => sum + item._stakingAlpha,
         0
       );
 
@@ -98,14 +98,14 @@ const Dashboard: React.FC = () => {
       console.error(err);
     }
     setLoading(false);
-  }, [subnetAlphaPrice, currentTaoPrice]);
+  }, []); // Remove price dependencies
 
   // Update miner data with current prices and record history
   const updateMinerDataWithPrices = React.useCallback(() => {
     if (subnetAlphaPrice > 0 && currentTaoPrice > 0) {
       setMinerData(prevData => prevData.map(miner => {
-        const stakingAlpha = parseFloat(miner.Staking.split(' ')[0]);
-        const dailyAlphaAlpha = parseFloat(miner.DailyAlpha.split(' ')[0]);
+        const stakingAlpha = miner._stakingAlpha || 0;
+        const dailyAlphaAlpha = miner._dailyAlphaAlpha || 0;
         const usdPerAlpha = subnetAlphaPrice * currentTaoPrice;
         const stakingUsd = Math.round(stakingAlpha * usdPerAlpha);
         const dailyAlphaUsd = Math.round(dailyAlphaAlpha * usdPerAlpha);
