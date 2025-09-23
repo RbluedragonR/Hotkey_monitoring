@@ -22,41 +22,6 @@ const formatTime = (ts: number): string => {
   return `${hh}:${mm}`;
 };
 
-function computeBounds(points: Point[]) {
-  if (points.length === 0) return { minX: 0, maxX: 1, minY: 0, maxY: 1 };
-  let minX = points[0].t;
-  let maxX = points[0].t;
-  let minY = points[0].v;
-  let maxY = points[0].v;
-  for (const p of points) {
-    if (p.t < minX) minX = p.t;
-    if (p.t > maxX) maxX = p.t;
-    if (p.v < minY) minY = p.v;
-    if (p.v > maxY) maxY = p.v;
-  }
-  if (minY === maxY) {
-    // add a small range so flat lines still render nicely
-    const pad = Math.max(1, Math.abs(minY) * 0.1);
-    minY -= pad;
-    maxY += pad;
-  }
-  return { minX, maxX, minY, maxY };
-}
-
-function pointsToPath(points: Point[], width: number, height: number, padding = 24): string {
-  if (points.length === 0) return "";
-  const { minX, maxX, minY, maxY } = computeBounds(points);
-  const w = width - padding * 2;
-  const h = height - padding * 2;
-  const scaleX = (t: number) => (w === 0 ? padding : padding + ((t - minX) / (maxX - minX || 1)) * w);
-  const scaleY = (v: number) => (h === 0 ? padding : padding + h - ((v - minY) / (maxY - minY || 1)) * h);
-  let d = `M ${scaleX(points[0].t)} ${scaleY(points[0].v)}`;
-  for (let i = 1; i < points.length; i++) {
-    d += ` L ${scaleX(points[i].t)} ${scaleY(points[i].v)}`;
-  }
-  return d;
-}
-
 const Card: React.FC<{ title: string; subtitle?: string; children: React.ReactNode }> = ({ title, subtitle, children }) => (
   <div className="bg-white rounded-lg shadow-sm p-3">
     <div className="flex items-baseline justify-between mb-2">
