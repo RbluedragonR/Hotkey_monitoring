@@ -32,20 +32,18 @@ const Dashboard: React.FC = () => {
   const [historyBySymbol, setHistoryBySymbol] = useState<Record<string, { t: number; v: number }[]>>({});
   const [notesByKey, setNotesByKey] = useState<Record<string, string>>({});
 
-  // Fetch data function (now reusable)
-  const fetchData = React.useCallback(async () => {
+  // Fetch basic data (miners, settings, etc.) - doesn't depend on prices
+  const fetchBasicData = React.useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       // Fetch current subnet
-      console.log(currentTaoPrice);
       const subnetRes = await axios.get(`${API_BASE_URL}/subnet`);
       setCurrentSubnet(subnetRes.data.subnet?.toString() || 'Not set');
 
       // Fetch subnet settings (new: alphaPrice, regCost, etc.)
       const settingsRes = await axios.get(`${API_BASE_URL}/settings`);
       const settings = settingsRes.data;
-      // setSubnetAlphaPrice(settings.alphaPrice || 0);
       setRegCost(settings.regCost || 0);
       setRegAllowed(settings.reg_allowed ?? true);
       setImmunePeriod(settings.immunePeriod || 0);
@@ -54,27 +52,15 @@ const Dashboard: React.FC = () => {
       const coldkeysRes = await axios.get(`${API_BASE_URL}/coldkeys`);
       setRegisteredKeys(coldkeysRes.data);
 
-      // Fetch miner data (optionally filtered by current subnet via backend)
-      const minersRes = await axios.get(`${API_BASE_URL}/miners`); // Add ?subnet=${currentSubnet} if backend supports
+      // Fetch miner data
+      const minersRes = await axios.get(`${API_BASE_URL}/miners`);
       const mappedData = minersRes.data.map((miner: any) => {
         const stakingAlpha = miner.staking ? Number(miner.staking) : 0;
         const dailyAlphaAlpha = miner.dailyAlpha ? Number(miner.dailyAlpha) : 0;
         const usdPerAlpha = subnetAlphaPrice * currentTaoPrice;
         const stakingUsd = Math.round(stakingAlpha * usdPerAlpha);
         const dailyAlphaUsd = Math.round(dailyAlphaAlpha * usdPerAlpha);
-        const symbolKey = miner.symbol ?? miner.Symbol ?? miner.uid ?? miner.hotkey;
-        // Only record history when price inputs are known and > 0 to avoid zero dips on refresh
-        if (symbolKey !== undefined && Number.isFinite(usdPerAlpha) && usdPerAlpha > 0) {
-          const key = String(symbolKey);
-          const now = Date.now();
-          const point = { t: now, v: dailyAlphaUsd };
-          setHistoryBySymbol((prev) => {
-            const nextSeries = [...(prev[key] || []), point].slice(-10080); // keep ~7 days if 1m polling
-            const next = { ...prev, [key]: nextSeries };
-            try { localStorage.setItem('dailyAlphaUsdHistory', JSON.stringify(next)); } catch {}
-            return next;
-          });
-        }
+        
         return {
           coldkey: miner.coldkey,
           hotkey: miner.hotkey,
@@ -114,19 +100,45 @@ const Dashboard: React.FC = () => {
     setLoading(false);
   }, [subnetAlphaPrice, currentTaoPrice]);
 
+  // Update miner data with current prices and record history
+  const updateMinerDataWithPrices = React.useCallback(() => {
+    if (subnetAlphaPrice > 0 && currentTaoPrice > 0) {
+      setMinerData(prevData => prevData.map(miner => {
+        const stakingAlpha = parseFloat(miner.Staking.split(' ')[0]);
+        const dailyAlphaAlpha = parseFloat(miner.DailyAlpha.split(' ')[0]);
+        const usdPerAlpha = subnetAlphaPrice * currentTaoPrice;
+        const stakingUsd = Math.round(stakingAlpha * usdPerAlpha);
+        const dailyAlphaUsd = Math.round(dailyAlphaAlpha * usdPerAlpha);
+        
+        // Record history for charts
+        const symbolKey = miner.UID;
+        if (symbolKey !== undefined && Number.isFinite(usdPerAlpha) && usdPerAlpha > 0) {
+          const key = String(symbolKey);
+          const now = Date.now();
+          const point = { t: now, v: dailyAlphaUsd };
+          setHistoryBySymbol((prev) => {
+            const nextSeries = [...(prev[key] || []), point].slice(-10080);
+            const next = { ...prev, [key]: nextSeries };
+            try { localStorage.setItem('dailyAlphaUsdHistory', JSON.stringify(next)); } catch {}
+            return next;
+          });
+        }
+        
+        return {
+          ...miner,
+          Staking: `${stakingAlpha.toFixed(2)} ($${stakingUsd})`,
+          DailyAlpha: `${dailyAlphaAlpha.toFixed(2)} ($${dailyAlphaUsd})`,
+        };
+      }));
+    }
+  }, [subnetAlphaPrice, currentTaoPrice]);
+
   // Reactive calculations for dailyEarn and totalStakingPrice
 
-  // Fetch on mount and periodically
+  // Fetch basic data on mount and periodically
   useEffect(() => {
-    // Only fetch data if we have valid prices
-    if (subnetAlphaPrice > 0 && currentTaoPrice > 0) {
-      fetchData(); // Initial fetch
-    }
-    const interval = setInterval(() => {
-      if (subnetAlphaPrice > 0 && currentTaoPrice > 0) {
-        fetchData();
-      }
-    }, 60000); // Poll every minute
+    fetchBasicData(); // Initial fetch
+    const interval = setInterval(fetchBasicData, 60000); // Poll every minute
 
     // Notification polling (unchanged)
     const checkNotifications = async () => {
@@ -152,7 +164,7 @@ const Dashboard: React.FC = () => {
       clearInterval(interval);
       clearInterval(notifInterval);
     };
-  }, [fetchData]); // re-establish interval if deps change
+  }, [fetchBasicData]); // re-establish interval if deps change
 
   const handleRegister = async () => {
     if (coldKey && !registeredKeys.includes(coldKey)) {
@@ -189,7 +201,7 @@ const Dashboard: React.FC = () => {
       await axios.post(`${API_BASE_URL}/subnet`, { subnet });
       setSuccess(`Subnet updated to "${subnet}" successfully!`);
       setSubnet(''); // Clear input
-      await fetchData(); // Refetch data to reflect changes (e.g., updated miners and settings)
+      await fetchBasicData(); // Refetch data to reflect changes (e.g., updated miners and settings)
     } catch (err) {
       setError('Failed to update subnet. Please check the value and try again.');
       console.error(err);
@@ -236,12 +248,10 @@ const Dashboard: React.FC = () => {
     fetchPrice();
   }, []); // No dependencies needed since backend handles the current subnet
 
-  // Re-fetch miners whenever price inputs change so USD values update
+  // Update miner data with prices when they become available
   useEffect(() => {
-    if (subnetAlphaPrice > 0 && currentTaoPrice > 0) {
-      fetchData();
-    }
-  }, [subnetAlphaPrice, currentTaoPrice, fetchData]);
+    updateMinerDataWithPrices();
+  }, [updateMinerDataWithPrices]);
 
   // Load history from localStorage on mount - do this first before any fetches
   useEffect(() => {
