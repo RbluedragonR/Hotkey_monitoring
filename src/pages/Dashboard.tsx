@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Table from '../component/Table'; // Adjust path if needed
+import DailyAlphaCharts from '../component/DailyAlphaCharts';
 
 const API_BASE_URL = 'https://hotkey-monitoring-backend.onrender.com/api'; // Update if backend is hosted elsewhere
 // const API_BASE_URL = 'http://localhost:3000/api'; // Local backend for development
@@ -28,6 +29,7 @@ const Dashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null); // For success messages
   const [currentTaoPrice, setCurrentTaoPrice] = useState<number>(0);
+  const [historyBySymbol, setHistoryBySymbol] = useState<Record<string, { t: number; v: number }[]>>({});
 
   // Fetch data function (now reusable)
   const fetchData = React.useCallback(async () => {
@@ -59,6 +61,18 @@ const Dashboard: React.FC = () => {
         const usdPerAlpha = subnetAlphaPrice * currentTaoPrice;
         const stakingUsd = Math.round(stakingAlpha * usdPerAlpha);
         const dailyAlphaUsd = Math.round(dailyAlphaAlpha * usdPerAlpha);
+        const symbolKey = miner.symbol ?? miner.Symbol ?? miner.uid ?? miner.hotkey;
+        if (symbolKey !== undefined && !Number.isNaN(usdPerAlpha)) {
+          const key = String(symbolKey);
+          const now = Date.now();
+          const point = { t: now, v: dailyAlphaUsd };
+          setHistoryBySymbol((prev) => {
+            const nextSeries = [...(prev[key] || []), point].slice(-2880); // keep ~2 days if 1m polling
+            const next = { ...prev, [key]: nextSeries };
+            try { localStorage.setItem('dailyAlphaUsdHistory', JSON.stringify(next)); } catch {}
+            return next;
+          });
+        }
         return {
           coldkey: miner.coldkey,
           hotkey: miner.hotkey,
@@ -213,6 +227,14 @@ const Dashboard: React.FC = () => {
       fetchData();
     }
   }, [subnetAlphaPrice, currentTaoPrice, fetchData]);
+
+  // Load history from localStorage on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('dailyAlphaUsdHistory');
+      if (raw) setHistoryBySymbol(JSON.parse(raw));
+    } catch {}
+  }, []);
 
 
   useEffect(() => {
@@ -390,6 +412,16 @@ const Dashboard: React.FC = () => {
           </div>
           <div className="overflow-x-auto">
             <Table rowData={minerData} />
+          </div>
+        </div>
+
+        {/* Charts */}
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <div className="p-3 border-b bg-gray-50">
+            <h3 className="font-semibold text-gray-700">Daily Alpha USD History</h3>
+          </div>
+          <div className="p-3">
+            <DailyAlphaCharts dataByKey={historyBySymbol} />
           </div>
         </div>
       </div>
