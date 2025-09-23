@@ -48,8 +48,11 @@ const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({ dataByKey, notesByK
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
       {series.map((s) => {
-        const data = s.points.map(p => ({ time: formatTime(p.t), value: p.v }));
-        const last = s.points[s.points.length - 1];
+        // Show last 24 hours of raw points
+        const now = Date.now();
+        const last24h = s.points.filter(p => p.t >= now - 24 * 60 * 60 * 1000);
+        const data = last24h.map(p => ({ time: formatTime(p.t), value: p.v }));
+        const last = last24h[last24h.length - 1] || s.points[s.points.length - 1];
         return (
           <Card key={s.key} title={s.label} subtitle={last ? `$${last.v} @ ${formatTime(last.t)}` : undefined}>
             <div style={{ width: '100%', height: 180 }}>
@@ -58,7 +61,7 @@ const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({ dataByKey, notesByK
                   <CartesianGrid stroke="#eee" strokeDasharray="3 3" />
                   <XAxis dataKey="time" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 10 }} width={40} />
-                  <Tooltip formatter={(v: any) => [`$${v}`, '$ Alpha']} labelFormatter={(l) => `Time: ${l}`} />
+                  <Tooltip formatter={(v: number) => [`$${v}`, '$ Alpha']} labelFormatter={(l: string) => `Time: ${l}`} />
                   <Line type="monotone" dataKey="value" stroke="#ef4444" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>

@@ -63,7 +63,8 @@ const Dashboard: React.FC = () => {
         const stakingUsd = Math.round(stakingAlpha * usdPerAlpha);
         const dailyAlphaUsd = Math.round(dailyAlphaAlpha * usdPerAlpha);
         const symbolKey = miner.symbol ?? miner.Symbol ?? miner.uid ?? miner.hotkey;
-        if (symbolKey !== undefined && !Number.isNaN(usdPerAlpha)) {
+        // Only record history when price inputs are known and > 0 to avoid zero dips on refresh
+        if (symbolKey !== undefined && Number.isFinite(usdPerAlpha) && usdPerAlpha > 0) {
           const key = String(symbolKey);
           const now = Date.now();
           const point = { t: now, v: dailyAlphaUsd };
