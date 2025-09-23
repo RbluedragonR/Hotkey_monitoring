@@ -69,7 +69,7 @@ const Dashboard: React.FC = () => {
           const now = Date.now();
           const point = { t: now, v: dailyAlphaUsd };
           setHistoryBySymbol((prev) => {
-            const nextSeries = [...(prev[key] || []), point].slice(-2880); // keep ~2 days if 1m polling
+            const nextSeries = [...(prev[key] || []), point].slice(-10080); // keep ~7 days if 1m polling
             const next = { ...prev, [key]: nextSeries };
             try { localStorage.setItem('dailyAlphaUsdHistory', JSON.stringify(next)); } catch {}
             return next;
@@ -230,12 +230,18 @@ const Dashboard: React.FC = () => {
     }
   }, [subnetAlphaPrice, currentTaoPrice, fetchData]);
 
-  // Load history from localStorage on mount
+  // Load history from localStorage on mount - do this first before any fetches
   useEffect(() => {
     try {
       const raw = localStorage.getItem('dailyAlphaUsdHistory');
-      if (raw) setHistoryBySymbol(JSON.parse(raw));
-    } catch {}
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        setHistoryBySymbol(parsed);
+        console.log('Loaded historical data:', Object.keys(parsed).length, 'symbols');
+      }
+    } catch (e) {
+      console.error('Failed to load history:', e);
+    }
   }, []);
 
   // Load symbol notes (from Table.tsx) and keep in sync
