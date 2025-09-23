@@ -31,6 +31,7 @@ const Dashboard: React.FC = () => {
   const [currentTaoPrice, setCurrentTaoPrice] = useState<number>(0);
   const [historyBySymbol, setHistoryBySymbol] = useState<Record<string, { t: number; v: number }[]>>({});
   const [notesByKey, setNotesByKey] = useState<Record<string, string>>({});
+  const [visibleUids, setVisibleUids] = useState<string[]>([]);
 
   // Fetch data function (now reusable)
   const fetchData = React.useCallback(async () => {
@@ -69,7 +70,7 @@ const Dashboard: React.FC = () => {
           const now = Date.now();
           const point = { t: now, v: dailyAlphaUsd };
           setHistoryBySymbol((prev) => {
-            const nextSeries = [...(prev[key] || []), point].slice(-2880); // keep ~2 days if 1m polling
+            const nextSeries = [...(prev[key] || []), point].slice(-10080); // keep ~7 days
             const next = { ...prev, [key]: nextSeries };
             try { localStorage.setItem('dailyAlphaUsdHistory', JSON.stringify(next)); } catch {}
             return next;
@@ -89,6 +90,10 @@ const Dashboard: React.FC = () => {
         };
       });
       setMinerData(mappedData);
+      
+      // Update visible UIDs for charts (only show charts for current miners)
+      const currentUids = mappedData.map((miner: any) => String(miner.UID));
+      setVisibleUids(currentUids);
 
       // Calculate totals from mappedData
       const totalDaily = mappedData.reduce(
@@ -441,7 +446,7 @@ const Dashboard: React.FC = () => {
             <h3 className="font-semibold text-gray-700">Daily Alpha USD History</h3>
           </div>
           <div className="p-3">
-            <DailyAlphaCharts dataByKey={historyBySymbol} notesByKey={notesByKey} />
+            <DailyAlphaCharts dataByKey={historyBySymbol} notesByKey={notesByKey} visibleUids={visibleUids} />
           </div>
         </div>
       </div>

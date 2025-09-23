@@ -12,6 +12,7 @@ interface Series {
 interface DailyAlphaChartsProps {
   dataByKey: Record<string, Point[]>;
   notesByKey?: Record<string, string>;
+  visibleUids?: string[]; // Only show charts for these UIDs
   maxPoints?: number;
 }
 
@@ -32,14 +33,22 @@ const Card: React.FC<{ title: string; subtitle?: string; children: React.ReactNo
   </div>
 );
 
-const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({ dataByKey, notesByKey = {}, maxPoints = 60 }) => {
+const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({ dataByKey, notesByKey = {}, visibleUids = [], maxPoints = 60 }) => {
   const series: Series[] = React.useMemo(() => {
-    return Object.entries(dataByKey).map(([key, points]) => ({
-      key,
-      label: notesByKey[key] ? `${key} — ${notesByKey[key]}` : key,
-      points: points.slice(-maxPoints),
-    }));
-  }, [dataByKey, notesByKey, maxPoints]);
+    // Only show charts for UIDs that exist in current miner data
+    const filteredKeys = visibleUids.length > 0 
+      ? Object.keys(dataByKey).filter(key => visibleUids.includes(key))
+      : Object.keys(dataByKey);
+    
+    return filteredKeys.map((key) => {
+      const points = dataByKey[key] || [];
+      return {
+        key,
+        label: notesByKey[key] ? `${key} — ${notesByKey[key]}` : key,
+        points: points.slice(-maxPoints),
+      };
+    });
+  }, [dataByKey, notesByKey, visibleUids, maxPoints]);
 
   if (series.length === 0) {
     return <div className="p-3 text-sm text-gray-500">No history yet. It will populate as data refreshes.</div>;
@@ -48,11 +57,12 @@ const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({ dataByKey, notesByK
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
       {series.map((s) => {
-        // Show last 24 hours of raw points
+        // Show last 24 hours of raw points, or all data if less than 24h
         const now = Date.now();
         const last24h = s.points.filter(p => p.t >= now - 24 * 60 * 60 * 1000);
-        const data = last24h.map(p => ({ time: formatTime(p.t), value: p.v }));
-        const last = last24h[last24h.length - 1] || s.points[s.points.length - 1];
+        const dataToShow = last24h.length > 0 ? last24h : s.points;
+        const data = dataToShow.map(p => ({ time: formatTime(p.t), value: p.v }));
+        const last = dataToShow[dataToShow.length - 1] || s.points[s.points.length - 1];
         return (
           <Card key={s.key} title={s.label} subtitle={last ? `$${last.v} @ ${formatTime(last.t)}` : undefined}>
             <div style={{ width: '100%', height: 180 }}>
