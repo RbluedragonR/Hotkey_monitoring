@@ -301,7 +301,7 @@ const Dashboard: React.FC = () => {
             </div>
 
             {/* TAO Price - Prominent */}
-            <div className="text-center">
+            <div className="text-center sticky top-0">
               <div className="text-xl md:text-3xl font-bold mb-2">TAO Price</div>
               <div className="text-3xl md:text-5xl font-bold text-red-500">{currentTaoPrice.toFixed(2)} $</div>
             </div>
