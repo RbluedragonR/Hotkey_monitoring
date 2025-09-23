@@ -98,6 +98,7 @@ const Table: React.FC<TableProps> = ({ rowData }) => {
     { field: "hotkey", cellRenderer: CellWithCopyIcon, minWidth: 150, maxWidth: 520 },
     {
       headerName: "Symbol Notes",
+      colId: "symbolNotes",
       editable: true,
       minWidth: 200,
       valueGetter: (params: any) => {
@@ -108,8 +109,10 @@ const Table: React.FC<TableProps> = ({ rowData }) => {
       valueSetter: (params: any) => {
         const sym = params.data?.symbol;
         if (!sym) return false;
-        saveSymbolNote(sym, params.newValue ?? "");
-        // prevent grid from trying to set on rowData
+        const newVal = params.newValue ?? "";
+        saveSymbolNote(sym, newVal);
+        // Do not write into rowData; just persist and refresh
+        params.api.refreshCells({ columns: ["symbolNotes"], force: true });
         return false;
       },
       cellStyle: { backgroundColor: "#FFFDF5" },
