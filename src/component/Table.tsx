@@ -14,6 +14,31 @@ interface TableProps {
 }
 
 const Table: React.FC<TableProps> = ({ rowData }) => {
+  const STORAGE_KEY = "symbolNotes";
+  const [symbolNotes, setSymbolNotes] = React.useState<Record<string, string>>(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const symbolNotesRef = React.useRef(symbolNotes);
+  React.useEffect(() => {
+    symbolNotesRef.current = symbolNotes;
+  }, [symbolNotes]);
+
+  const saveSymbolNote = React.useCallback((symbol: string, note: string) => {
+    setSymbolNotes((prev) => {
+      const next = { ...prev, [symbol]: note };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
+
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text.toString());
@@ -71,6 +96,24 @@ const Table: React.FC<TableProps> = ({ rowData }) => {
     },
     { field: "coldkey", cellRenderer: CellWithCopyIcon, minWidth: 150, maxWidth: 520 },
     { field: "hotkey", cellRenderer: CellWithCopyIcon, minWidth: 150, maxWidth: 520 },
+    {
+      headerName: "Symbol Notes",
+      editable: true,
+      minWidth: 200,
+      valueGetter: (params: any) => {
+        const sym = params.data?.symbol;
+        if (!sym) return "";
+        return symbolNotesRef.current[sym] ?? "";
+      },
+      valueSetter: (params: any) => {
+        const sym = params.data?.symbol;
+        if (!sym) return false;
+        saveSymbolNote(sym, params.newValue ?? "");
+        // prevent grid from trying to set on rowData
+        return false;
+      },
+      cellStyle: { backgroundColor: "#FFFDF5" },
+    },
     { field: "UID", maxWidth: 90 },
     { field: "Ranking", maxWidth: 90 },
     { field: "Staking", maxWidth: 90 },
