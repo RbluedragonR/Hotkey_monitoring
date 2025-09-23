@@ -30,7 +30,7 @@ const Dashboard: React.FC = () => {
   const [currentTaoPrice, setCurrentTaoPrice] = useState<number>(0);
 
   // Fetch data function (now reusable)
-  const fetchData = async () => {
+  const fetchData = React.useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -96,7 +96,7 @@ const Dashboard: React.FC = () => {
       console.error(err);
     }
     setLoading(false);
-  };
+  }, [subnetAlphaPrice, currentTaoPrice]);
 
   // Reactive calculations for dailyEarn and totalStakingPrice
 
@@ -129,7 +129,7 @@ const Dashboard: React.FC = () => {
       clearInterval(interval);
       clearInterval(notifInterval);
     };
-  }, []); // No dependencies; runs on mount
+  }, [fetchData]); // re-establish interval if deps change
 
   const handleRegister = async () => {
     if (coldKey && !registeredKeys.includes(coldKey)) {
@@ -205,10 +205,14 @@ const Dashboard: React.FC = () => {
     };
 
     fetchPrice();
-    // After price data loads later, re-fetch miners to format with current USD conversion
-    const refreshAfterPrice = setTimeout(fetchData, 1000);
-    return () => clearTimeout(refreshAfterPrice);
   }, []); // No dependencies needed since backend handles the current subnet
+
+  // Re-fetch miners whenever price inputs change so USD values update
+  useEffect(() => {
+    if (subnetAlphaPrice && currentTaoPrice) {
+      fetchData();
+    }
+  }, [subnetAlphaPrice, currentTaoPrice, fetchData]);
 
 
   useEffect(() => {
