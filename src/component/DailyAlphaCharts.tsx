@@ -1,4 +1,5 @@
 import React from "react";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 type Point = { t: number; v: number };
 
@@ -82,20 +83,21 @@ const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({ dataByKey, notesByK
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
       {series.map((s) => {
-        const width = 360;
-        const height = 140;
-        const path = pointsToPath(s.points, width, height);
+        const data = s.points.map(p => ({ time: formatTime(p.t), value: p.v }));
         const last = s.points[s.points.length - 1];
         return (
           <Card key={s.key} title={s.label} subtitle={last ? `$${last.v} @ ${formatTime(last.t)}` : undefined}>
-            <svg width={width} height={height + 24} className="w-full">
-              <rect x={0} y={0} width={width} height={height + 24} fill="#fafafa" stroke="#eee" />
-              <text x={6} y={12} fontSize={10} fill="#6b7280">$ Alpha Price</text>
-              <text x={width - 80} y={height + 18} fontSize={10} fill="#6b7280">Time</text>
-              <g transform={`translate(0,12)`}>
-                <path d={path} stroke="#ef4444" strokeWidth={2} fill="none" />
-              </g>
-            </svg>
+            <div style={{ width: '100%', height: 180 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={data} margin={{ top: 10, right: 12, bottom: 10, left: 0 }}>
+                  <CartesianGrid stroke="#eee" strokeDasharray="3 3" />
+                  <XAxis dataKey="time" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} width={40} />
+                  <Tooltip formatter={(v: any) => [`$${v}`, '$ Alpha']} labelFormatter={(l) => `Time: ${l}`} />
+                  <Line type="monotone" dataKey="value" stroke="#ef4444" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </Card>
         );
       })}
