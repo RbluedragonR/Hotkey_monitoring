@@ -118,8 +118,15 @@ const Dashboard: React.FC = () => {
 
   // Fetch on mount and periodically
   useEffect(() => {
-    fetchData(); // Initial fetch
-    const interval = setInterval(fetchData, 60000); // Poll every minute
+    // Only fetch data if we have valid prices
+    if (subnetAlphaPrice > 0 && currentTaoPrice > 0) {
+      fetchData(); // Initial fetch
+    }
+    const interval = setInterval(() => {
+      if (subnetAlphaPrice > 0 && currentTaoPrice > 0) {
+        fetchData();
+      }
+    }, 60000); // Poll every minute
 
     // Notification polling (unchanged)
     const checkNotifications = async () => {
@@ -204,12 +211,18 @@ const Dashboard: React.FC = () => {
         } else {
           console.warn('No price data in response:', response.data);
         }
-        const taoPrice = await axios.get(`${API_BASE_URL}/taoPrice`);
-        if (taoPrice.data && taoPrice.data.price !== undefined) {
-          setCurrentTaoPrice(parseFloat(taoPrice.data.price));
-          console.log('TAO Price set to:', taoPrice.data.price);
-        } else {
-          console.warn('No TAO price data in response:', taoPrice.data);
+        try {
+          const taoPrice = await axios.get(`${API_BASE_URL}/taoPrice`);
+          if (taoPrice.data && taoPrice.data.price !== undefined) {
+            setCurrentTaoPrice(parseFloat(taoPrice.data.price));
+            console.log('TAO Price set to:', taoPrice.data.price);
+          } else {
+            console.warn('No TAO price data in response:', taoPrice.data);
+          }
+        } catch (taoError) {
+          console.warn('TAO price API failed, using fallback price:', taoError);
+          // Use a fallback TAO price if API fails
+          setCurrentTaoPrice(500); // Fallback price
         }
       } catch (error: any) {
         console.error('Failed to fetch price data:', error);
@@ -225,7 +238,7 @@ const Dashboard: React.FC = () => {
 
   // Re-fetch miners whenever price inputs change so USD values update
   useEffect(() => {
-    if (subnetAlphaPrice && currentTaoPrice) {
+    if (subnetAlphaPrice > 0 && currentTaoPrice > 0) {
       fetchData();
     }
   }, [subnetAlphaPrice, currentTaoPrice, fetchData]);
