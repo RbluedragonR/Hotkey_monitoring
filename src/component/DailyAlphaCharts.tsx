@@ -88,9 +88,13 @@ const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({ dataByKey, notesByK
         const last = s.points[s.points.length - 1];
         return (
           <Card key={s.key} title={s.label} subtitle={last ? `$${last.v} @ ${formatTime(last.t)}` : undefined}>
-            <svg width={width} height={height} className="w-full">
-              <rect x={0} y={0} width={width} height={height} fill="#fafafa" stroke="#eee" />
-              <path d={path} stroke="#ef4444" strokeWidth={2} fill="none" />
+            <svg width={width} height={height + 24} className="w-full">
+              <rect x={0} y={0} width={width} height={height + 24} fill="#fafafa" stroke="#eee" />
+              <text x={6} y={12} fontSize={10} fill="#6b7280">$ Alpha Price</text>
+              <text x={width - 80} y={height + 18} fontSize={10} fill="#6b7280">Time</text>
+              <g transform={`translate(0,12)`}>
+                <path d={path} stroke="#ef4444" strokeWidth={2} fill="none" />
+              </g>
             </svg>
           </Card>
         );

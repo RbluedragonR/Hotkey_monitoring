@@ -30,6 +30,7 @@ const Dashboard: React.FC = () => {
   const [success, setSuccess] = useState<string | null>(null); // For success messages
   const [currentTaoPrice, setCurrentTaoPrice] = useState<number>(0);
   const [historyBySymbol, setHistoryBySymbol] = useState<Record<string, { t: number; v: number }[]>>({});
+  const [notesByKey, setNotesByKey] = useState<Record<string, string>>({});
 
   // Fetch data function (now reusable)
   const fetchData = React.useCallback(async () => {
@@ -236,6 +237,24 @@ const Dashboard: React.FC = () => {
     } catch {}
   }, []);
 
+  // Load symbol notes (from Table.tsx) and keep in sync
+  useEffect(() => {
+    const loadNotes = () => {
+      try {
+        const raw = localStorage.getItem('symbolNotes');
+        setNotesByKey(raw ? JSON.parse(raw) : {});
+      } catch {
+        setNotesByKey({});
+      }
+    };
+    loadNotes();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'symbolNotes') loadNotes();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
 
   useEffect(() => {
     setDailyEarn(totalDailyAlpha * subnetAlphaPrice);
@@ -421,7 +440,7 @@ const Dashboard: React.FC = () => {
             <h3 className="font-semibold text-gray-700">Daily Alpha USD History</h3>
           </div>
           <div className="p-3">
-            <DailyAlphaCharts dataByKey={historyBySymbol} />
+            <DailyAlphaCharts dataByKey={historyBySymbol} notesByKey={notesByKey} />
           </div>
         </div>
       </div>
