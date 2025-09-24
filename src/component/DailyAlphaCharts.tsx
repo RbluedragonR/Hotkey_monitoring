@@ -56,19 +56,6 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-// Custom tick formatter that only shows key times
-const customTickFormatter = (value: string): string => {
-  // Extract hour from HH:MM format
-  const hour = parseInt(value.split(':')[0]);
-  
-  // Show times at 00:00, 03:00, 06:00, 09:00, 12:00, 15:00, 18:00, 21:00
-  if (hour % 3 === 0 && value.endsWith(':00')) {
-    return value;
-  }
-  
-  return '';
-};
-
 const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({ 
   dataByKey, 
   notesByKey = {}, 
