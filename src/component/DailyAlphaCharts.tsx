@@ -42,6 +42,20 @@ const Card: React.FC<{ title: string; subtitle?: string; children: React.ReactNo
   </div>
 );
 
+// Custom tooltip component
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className="bg-white p-2 border border-gray-200 rounded shadow-lg">
+        <p className="text-sm font-medium">{data.fullTime}</p>
+        <p className="text-sm text-gray-600">$ Alpha: ${data.value}</p>
+      </div>
+    );
+  }
+  return null;
+};
+
 const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({ 
   dataByKey, 
   notesByKey = {}, 
@@ -98,6 +112,7 @@ const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({
         const data = sampledData.map(p => ({ 
           time: formatTime(p.t), 
           fullTime: formatDatetime(p.t),
+          timestamp: p.t,
           value: p.v 
         }));
         
@@ -133,11 +148,8 @@ const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({
                   />
                   <YAxis tick={{ fontSize: 10 }} width={40} />
                   <Tooltip 
-                    formatter={(v: number) => [`$${v}`, '$ Alpha']} 
-                    labelFormatter={(index: number) => {
-                      const point = data[index as number];
-                      return point?.fullTime || '';
-                    }}
+                    content={<CustomTooltip />}
+                    cursor={{ stroke: '#ef4444', strokeWidth: 1, strokeDasharray: '3 3' }}
                   />
                   <Line type="monotone" dataKey="value" stroke="#ef4444" strokeWidth={2} dot={false} />
                 </LineChart>
