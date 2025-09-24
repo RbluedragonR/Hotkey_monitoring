@@ -57,21 +57,13 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 // Custom tick formatter that only shows key times
-const customTickFormatter = (value: string, index: number, data: any[]): string => {
+const customTickFormatter = (value: string): string => {
   // Extract hour from HH:MM format
   const hour = parseInt(value.split(':')[0]);
   
-  // For 24-hour view, show every 3 hours (00:00, 03:00, 06:00, etc.)
-  if (hour % 3 === 0) {
+  // Show times at 00:00, 03:00, 06:00, 09:00, 12:00, 15:00, 18:00, 21:00
+  if (hour % 3 === 0 && value.endsWith(':00')) {
     return value;
-  }
-  
-  // For shorter time ranges, we might want to show more frequent ticks
-  if (data.length < 100) {
-    // For less data points, show every hour
-    if (value.endsWith(':00')) {
-      return value;
-    }
   }
   
   return '';
@@ -180,7 +172,6 @@ const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({
                     dataKey="time" 
                     tick={{ fontSize: 10 }} 
                     ticks={customTicks}
-                    tickFormatter={customTickFormatter}
                     angle={0}
                     textAnchor="middle"
                     height={30}
