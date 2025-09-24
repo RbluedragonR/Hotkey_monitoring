@@ -43,7 +43,7 @@ const Card: React.FC<{ title: string; subtitle?: string; children: React.ReactNo
 );
 
 // Custom tooltip component
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
@@ -54,6 +54,27 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     );
   }
   return null;
+};
+
+// Custom tick formatter that only shows key times
+const customTickFormatter = (value: string, index: number, data: any[]): string => {
+  // Extract hour from HH:MM format
+  const hour = parseInt(value.split(':')[0]);
+  
+  // For 24-hour view, show every 3 hours (00:00, 03:00, 06:00, etc.)
+  if (hour % 3 === 0) {
+    return value;
+  }
+  
+  // For shorter time ranges, we might want to show more frequent ticks
+  if (data.length < 100) {
+    // For less data points, show every hour
+    if (value.endsWith(':00')) {
+      return value;
+    }
+  }
+  
+  return '';
 };
 
 const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({ 
@@ -124,12 +145,29 @@ const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({
           : 0;
         const hoursInRange = timeRange / (1000 * 60 * 60);
         
-        // Determine tick interval: show fewer ticks for longer time ranges
-        let tickInterval = 0; // 0 means auto
-        if (hoursInRange > 12) {
-          tickInterval = Math.ceil(sampledData.length / 8); // Show ~8 ticks for 24 hours
-        } else if (hoursInRange > 6) {
-          tickInterval = Math.ceil(sampledData.length / 6); // Show ~6 ticks for 6-12 hours
+        // Create custom ticks for key times
+        const customTicks: number[] = [];
+        if (data.length > 0) {
+          // For 24-hour view, show ticks every 3 hours
+          const tickHours = hoursInRange > 12 ? 3 : hoursInRange > 6 ? 2 : 1;
+          
+          data.forEach((point, index) => {
+            const hour = parseInt(point.time.split(':')[0]);
+            const minute = parseInt(point.time.split(':')[1]);
+            
+            // Add tick if it's a key hour (divisible by tickHours) and close to 00 minutes
+            if (hour % tickHours === 0 && minute < 10) {
+              // Check if we don't already have a tick near this position
+              const nearbyTick = customTicks.find(t => Math.abs(t - index) < 5);
+              if (!nearbyTick) {
+                customTicks.push(index);
+              }
+            }
+          });
+          
+          // Ensure we have first and last ticks
+          if (!customTicks.includes(0)) customTicks.unshift(0);
+          if (!customTicks.includes(data.length - 1)) customTicks.push(data.length - 1);
         }
         
         return (
@@ -141,10 +179,11 @@ const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({
                   <XAxis 
                     dataKey="time" 
                     tick={{ fontSize: 10 }} 
-                    interval={tickInterval}
-                    angle={-45}
-                    textAnchor="end"
-                    height={50}
+                    ticks={customTicks}
+                    tickFormatter={customTickFormatter}
+                    angle={0}
+                    textAnchor="middle"
+                    height={30}
                   />
                   <YAxis tick={{ fontSize: 10 }} width={40} />
                   <Tooltip 
