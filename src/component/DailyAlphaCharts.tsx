@@ -23,6 +23,11 @@ const formatTime = (ts: number): string => {
   return `${hh}:${mm}`;
 };
 
+const formatHourOnly = (ts: number): string => {
+  const d = new Date(ts);
+  return String(d.getHours()).padStart(2, "0");
+};
+
 const formatDatetime = (ts: number): string => {
   const d = new Date(ts);
   const month = String(d.getMonth() + 1).padStart(2, "0");
@@ -56,17 +61,11 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-// Custom tick formatter that shows labels only for major ticks
+// Custom tick formatter that shows only hours
 const customTickFormatter = (value: string) => {
-  const hour = parseInt(value.split(':')[0]);
-  
-  // Show label only for major ticks (every 3 hours)
-  if (hour % 3 === 0 && value.endsWith(':00')) {
-    return value;
-  }
-  
-  // Return empty string for minor ticks (they'll still show tick marks)
-  return '';
+  // Extract just the hour part
+  const hour = value.split(':')[0];
+  return hour;
 };
 
 const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({ 
@@ -124,6 +123,7 @@ const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({
         
         const data = sampledData.map(p => ({ 
           time: formatTime(p.t), 
+          hour: formatHourOnly(p.t),
           fullTime: formatDatetime(p.t),
           timestamp: p.t,
           value: p.v 
@@ -137,32 +137,21 @@ const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({
           : 0;
         const hoursInRange = timeRange / (1000 * 60 * 60);
         
-        // Create custom ticks for both major and minor time marks
+        // Create custom ticks for hour marks
         const customTicks: number[] = [];
         if (data.length > 0) {
           // Determine tick frequency based on time range
-          const minorTickHours = hoursInRange > 12 ? 1 : 0.5; // Every hour for 24h view, every 30 min for shorter
+          const tickInterval = hoursInRange > 12 ? 3 : hoursInRange > 6 ? 2 : 1; // Show every 3, 2, or 1 hour
           
+          let lastHourAdded = -1;
           data.forEach((point, index) => {
+            const hour = parseInt(point.hour);
             const minute = parseInt(point.time.split(':')[1]);
             
-            // Add tick for every hour (or half hour for short ranges)
-            if (minorTickHours === 1) {
-              // Every hour
-              if (minute < 10) {
-                const nearbyTick = customTicks.find(t => Math.abs(t - index) < 3);
-                if (!nearbyTick) {
-                  customTicks.push(index);
-                }
-              }
-            } else {
-              // Every 30 minutes
-              if ((minute < 5 || (minute > 25 && minute < 35))) {
-                const nearbyTick = customTicks.find(t => Math.abs(t - index) < 3);
-                if (!nearbyTick) {
-                  customTicks.push(index);
-                }
-              }
+            // Add tick at the beginning of each hour that matches our interval
+            if (hour !== lastHourAdded && hour % tickInterval === 0 && minute < 10) {
+              customTicks.push(index);
+              lastHourAdded = hour;
             }
           });
           
