@@ -57,7 +57,7 @@ const CustomTooltip = ({ active, payload }: any) => {
 };
 
 // Custom tick formatter that shows labels only for major ticks
-const customTickFormatter = (value: string, index: number) => {
+const customTickFormatter = (value: string) => {
   const hour = parseInt(value.split(':')[0]);
   
   // Show label only for major ticks (every 3 hours)
@@ -144,7 +144,6 @@ const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({
           const minorTickHours = hoursInRange > 12 ? 1 : 0.5; // Every hour for 24h view, every 30 min for shorter
           
           data.forEach((point, index) => {
-            const hour = parseInt(point.time.split(':')[0]);
             const minute = parseInt(point.time.split(':')[1]);
             
             // Add tick for every hour (or half hour for short ranges)
