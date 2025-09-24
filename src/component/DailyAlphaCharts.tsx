@@ -56,6 +56,19 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
+// Custom tick formatter that shows labels only for major ticks
+const customTickFormatter = (value: string, index: number) => {
+  const hour = parseInt(value.split(':')[0]);
+  
+  // Show label only for major ticks (every 3 hours)
+  if (hour % 3 === 0 && value.endsWith(':00')) {
+    return value;
+  }
+  
+  // Return empty string for minor ticks (they'll still show tick marks)
+  return '';
+};
+
 const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({ 
   dataByKey, 
   notesByKey = {}, 
@@ -124,22 +137,32 @@ const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({
           : 0;
         const hoursInRange = timeRange / (1000 * 60 * 60);
         
-        // Create custom ticks for key times
+        // Create custom ticks for both major and minor time marks
         const customTicks: number[] = [];
         if (data.length > 0) {
-          // For 24-hour view, show ticks every 3 hours
-          const tickHours = hoursInRange > 12 ? 3 : hoursInRange > 6 ? 2 : 1;
+          // Determine tick frequency based on time range
+          const minorTickHours = hoursInRange > 12 ? 1 : 0.5; // Every hour for 24h view, every 30 min for shorter
           
           data.forEach((point, index) => {
             const hour = parseInt(point.time.split(':')[0]);
             const minute = parseInt(point.time.split(':')[1]);
             
-            // Add tick if it's a key hour (divisible by tickHours) and close to 00 minutes
-            if (hour % tickHours === 0 && minute < 10) {
-              // Check if we don't already have a tick near this position
-              const nearbyTick = customTicks.find(t => Math.abs(t - index) < 5);
-              if (!nearbyTick) {
-                customTicks.push(index);
+            // Add tick for every hour (or half hour for short ranges)
+            if (minorTickHours === 1) {
+              // Every hour
+              if (minute < 10) {
+                const nearbyTick = customTicks.find(t => Math.abs(t - index) < 3);
+                if (!nearbyTick) {
+                  customTicks.push(index);
+                }
+              }
+            } else {
+              // Every 30 minutes
+              if ((minute < 5 || (minute > 25 && minute < 35))) {
+                const nearbyTick = customTicks.find(t => Math.abs(t - index) < 3);
+                if (!nearbyTick) {
+                  customTicks.push(index);
+                }
               }
             }
           });
@@ -147,6 +170,9 @@ const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({
           // Ensure we have first and last ticks
           if (!customTicks.includes(0)) customTicks.unshift(0);
           if (!customTicks.includes(data.length - 1)) customTicks.push(data.length - 1);
+          
+          // Sort ticks to ensure proper order
+          customTicks.sort((a, b) => a - b);
         }
         
         return (
@@ -159,9 +185,11 @@ const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({
                     dataKey="time" 
                     tick={{ fontSize: 10 }} 
                     ticks={customTicks}
+                    tickFormatter={customTickFormatter}
                     angle={0}
                     textAnchor="middle"
                     height={30}
+                    interval="preserveStartEnd"
                   />
                   <YAxis tick={{ fontSize: 10 }} width={40} />
                   <Tooltip 
