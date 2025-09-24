@@ -130,31 +130,8 @@ const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({
           : 0;
         const hoursInRange = timeRange / (1000 * 60 * 60);
         
-        // Create custom ticks for hour marks
-        const customTicks: number[] = [];
-        if (data.length > 0) {
-          // Determine tick frequency based on time range
-          const tickInterval = hoursInRange > 12 ? 3 : hoursInRange > 6 ? 2 : 1; // Show every 3, 2, or 1 hour
-          
-          let lastHourAdded = -1;
-          data.forEach((point, index) => {
-            const hour = parseInt(point.hour);
-            const minute = parseInt(point.time.split(':')[1]);
-            
-            // Add tick at the beginning of each hour that matches our interval
-            if (hour !== lastHourAdded && hour % tickInterval === 0 && minute < 10) {
-              customTicks.push(index);
-              lastHourAdded = hour;
-            }
-          });
-          
-          // Ensure we have first and last ticks
-          if (!customTicks.includes(0)) customTicks.unshift(0);
-          if (!customTicks.includes(data.length - 1)) customTicks.push(data.length - 1);
-          
-          // Sort ticks to ensure proper order
-          customTicks.sort((a, b) => a - b);
-        }
+        // Determine how many ticks to show
+        const tickCount = hoursInRange > 12 ? 8 : hoursInRange > 6 ? 6 : 4;
         
         // Custom tick formatter that shows only hours
         const customTickFormatter = (value: string) => {
@@ -174,11 +151,11 @@ const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({
                   <XAxis 
                     dataKey="time" 
                     tick={{ fontSize: 10 }} 
-                    ticks={customTicks}
                     tickFormatter={customTickFormatter}
                     angle={0}
                     textAnchor="middle"
                     height={30}
+                    tickCount={tickCount}
                     interval="preserveStartEnd"
                   />
                   <YAxis tick={{ fontSize: 10 }} width={40} />
