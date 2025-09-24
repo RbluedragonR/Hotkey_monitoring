@@ -61,13 +61,6 @@ const CustomTooltip = ({ active, payload }: any) => {
   return null;
 };
 
-// Custom tick formatter that shows only hours
-const customTickFormatter = (value: string) => {
-  // Extract just the hour part
-  const hour = value.split(':')[0];
-  return hour;
-};
-
 const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({ 
   dataByKey, 
   notesByKey = {}, 
@@ -162,6 +155,15 @@ const DailyAlphaCharts: React.FC<DailyAlphaChartsProps> = ({
           // Sort ticks to ensure proper order
           customTicks.sort((a, b) => a - b);
         }
+        
+        // Custom tick formatter that shows only hours
+        const customTickFormatter = (value: string) => {
+          // The value comes as "HH:MM", extract just the hour part
+          if (typeof value === 'string' && value.includes(':')) {
+            return value.split(':')[0];
+          }
+          return value;
+        };
         
         return (
           <Card key={s.key} title={s.label} subtitle={last ? `$${last.v} @ ${formatTime(last.t)}` : undefined}>
